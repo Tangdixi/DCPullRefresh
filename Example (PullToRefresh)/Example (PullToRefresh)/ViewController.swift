@@ -21,6 +21,10 @@ class ViewController: UIViewController {
     tableView.dcRefreshControl = DCRefreshControl {
       // do something...
       
+      for _ in 0...(0xffff/2) {
+        print("Updating......")
+      }
+      
     }
     
 //    tableView.addSubview(UIRefreshControl())
