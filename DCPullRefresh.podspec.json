@@ -1,7 +1,7 @@
 {
   "name": "DCPullRefresh",
   "version": "1.0",
-  "summary": "A pull down refresh tableView animation"
+  "summary": "A pull down refresh tableView animation",
   "homepage": "https://github.com/Tangdixi/DCPullRefresh",
   "license": {
     "type": "MIT",
