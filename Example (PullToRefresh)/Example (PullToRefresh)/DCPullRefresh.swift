@@ -10,51 +10,76 @@ import UIKit
 
 typealias DCRefreshControlHander = (()->Void)
 
+// MARK: - Refresh Status
+
 enum DCRefreshControlState {
   
   case Idle
   case Charging
   case Refreshing
+  case Dismissing
   case End
   
 }
 
 // MARK: - Constants
 enum DCRefreshControlConstant {
-
+  
   static let drawPathThreshold = CGFloat(64)
   static let beginRefreshingThreshold = CGFloat(116)
   static let color = UIColor(red: 140/255, green: 145/255, blue: 176/255, alpha: 1.0)
   
   static let ballLayerTransformKeyFrame = (11, 16)
   static let ballLayerTransformLastKeyFrame = 17
+  
   static let circlePathLayerTransformKeyFrame = (17, 60)
+  
+  static let ballLayerDismissKeyFrame = (3, 19)
+  
+  static let backgroundWillDismissKeyFrame = (19, 22)
+
   
 }
 
+// MARK: - Constructor
+
 class DCRefreshControl: UIView {
   
-  // Reference to self.superView, keep it with a weak attribute for avoiding memory leak
-  //
+  // MARK: - Fetch some properties from superView
   private weak var mirrorSuperView:UIScrollView!
-  
-  private var displayLink:CADisplayLink!
   private var originContentInset:UIEdgeInsets!
   private var currentOffsetY = CGFloat(0)
-  private var color:UIColor!
   private var panGestureRecognizer:UIPanGestureRecognizer!
   
+  // MARK: - Animations
   private var isAnimating = false
-  private var ballLayer:CAShapeLayer!
+  private var refreshControlState = DCRefreshControlState.Idle
+  
+  // MARK: - Display link
+  private var frameCount:Int = 0
+  private var displayLink:CADisplayLink!
+  
+  // MARK: - Background path
+  
+  /// The background color
+  var color:UIColor!
   private var controlPointAssociateView:UIView!
   private var controlPoint:CGPoint!
-  private var frameCount:Int = 0
+  
+  // MARK: - Ball layer animation
+  private var ballLayer:CAShapeLayer!
   private var transformPathAssociatePoint:CGPoint!
+  
+  // MARK: - Circle layer animation
   private var circlePathLayer:CAShapeLayer!
   
-  private var queue:NSOperationQueue!
+  // MARK: - Dismiss animation
+  private var dismissAnimationAssociateView:UIView!
+  private var dismissAnimationAsscciatePoint:CGPoint!
+  private var fakeBackgroundView:UIView!
   
-  var refreshControlState = DCRefreshControlState.Idle
+  // MARK: - Refresh completion
+  private var queue:NSOperationQueue!
   var refreshHandler:DCRefreshControlHander? = nil
   
   // MARK: - Initialization
@@ -74,7 +99,10 @@ class DCRefreshControl: UIView {
     self.color = color
   }
   
+  // MARK: - Life cycle
   override func willMoveToSuperview(newSuperview: UIView?) {
+    
+    self.clipsToBounds = true
     
     super.willMoveToSuperview(newSuperview)
     
@@ -83,11 +111,6 @@ class DCRefreshControl: UIView {
     guard let newSuperview = newSuperview as? UIScrollView  else {
       
       removeObservers()
-      
-      /* The view will be destroied, cancel all executing operation */
-      guard let queue = queue else { return }
-      queue.cancelAllOperations()
-      
       return
       
     }
@@ -106,6 +129,8 @@ class DCRefreshControl: UIView {
   // MARK: - Drawing
   override func drawRect(rect: CGRect) {
     
+    /* Draw the main background */
+    
     let path = UIBezierPath()
     path.moveToPoint(CGPointZero)
     
@@ -122,6 +147,51 @@ class DCRefreshControl: UIView {
       path.addLineToPoint(CGPoint(x: 0, y: abs(currentOffsetY)))
       path.addQuadCurveToPoint(CGPoint(x: self.frame.size.width, y: abs(currentOffsetY)), controlPoint: controlPoint)
     
+    case .Dismissing:
+      
+      let backgroundStartDismiss = (frameCount >= DCRefreshControlConstant.backgroundWillDismissKeyFrame.0) && (frameCount < DCRefreshControlConstant.backgroundWillDismissKeyFrame.1)
+      
+      if backgroundStartDismiss == true {
+        path.addLineToPoint(CGPoint(x: 0, y: abs(currentOffsetY)))
+        path.addQuadCurveToPoint(CGPoint(x: self.frame.size.width, y: abs(currentOffsetY)), controlPoint: CGPoint(x: controlPoint.x, y: controlPoint.y+CGFloat(frameCount-DCRefreshControlConstant.backgroundWillDismissKeyFrame.0)*5))
+        break
+      }
+      
+      let backgroundDismissing = (frameCount > DCRefreshControlConstant.backgroundWillDismissKeyFrame.1)
+      
+      if backgroundDismissing == true {
+
+        displayLink.invalidate()
+        displayLink = nil
+        
+        fakeBackgroundView = {
+          
+          let view = UIView(frame: CGRect(x: 0, y: 0, width: self.frame.size.width, height: abs(currentOffsetY)))
+          view.backgroundColor = color
+          return view
+          
+        }()
+        self.addSubview(fakeBackgroundView)
+        
+        UIView.animateWithDuration(0.7,
+        animations: {
+          
+          self.mirrorSuperView.contentInset = self.originContentInset
+          self.fakeBackgroundView.alpha = 0
+          
+        },
+        completion: { finished in
+          
+          self.dismissAnimationDidEnd()
+          
+        })
+        
+        return
+      }
+      
+      path.addLineToPoint(CGPoint(x: 0, y: abs(currentOffsetY)))
+      path.addQuadCurveToPoint(CGPoint(x: self.frame.size.width, y: abs(currentOffsetY)), controlPoint: controlPoint)
+      
     default:
       path.addLineToPoint(CGPoint(x: self.frame.size.width, y: self.frame.size.height))
     }
@@ -134,112 +204,210 @@ class DCRefreshControl: UIView {
     self.color.set()
     CGContextFillPath(context)
     
-    /* Ball layer begin transforming */
-    let ballLayerTransforming = (frameCount > DCRefreshControlConstant.ballLayerTransformKeyFrame.0) && (frameCount <= DCRefreshControlConstant.ballLayerTransformKeyFrame.1)
+    /* Configure the frame of the refresh animtion */
     
-    if ballLayerTransforming == true {
+    if refreshControlState == .Refreshing {
       
-      /* Disable the implicit animation in CALayer */
-      CATransaction.setDisableActions(true)
+      /* Ball layer begin transforming */
+      let ballLayerTransforming = (frameCount > DCRefreshControlConstant.ballLayerTransformKeyFrame.0) && (frameCount <= DCRefreshControlConstant.ballLayerTransformKeyFrame.1)
       
-      /* There are 12, 9, 6, 3 and finally it stay at abs(currentOffsetY)/2 */
-      ballLayer.setCenter(CGPoint(x: controlPoint.x, y: abs(currentOffsetY)*(3/5)-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1))
-      
-      if transformPathAssociatePoint == nil {
-        transformPathAssociatePoint = ballLayer.center
+      if ballLayerTransforming == true {
+        
+        /* Disable the implicit animation in CALayer */
+        CATransaction.setDisableActions(true)
+        
+        /* There are 12, 9, 6, 3 and finally it stay at abs(currentOffsetY)/2 */
+        ballLayer.setCenter(CGPoint(x: controlPoint.x, y: abs(currentOffsetY)*(3/5)-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1))
+        
+        if transformPathAssociatePoint == nil {
+          transformPathAssociatePoint = ballLayer.center
+        }
+        
+        let topLeftPoint:CGPoint = {
+          let x = self.frame.size.width/2-sqrt(CGFloat(powf(Float(ballLayer.frame.size.width/2), 2)-powf(Float(transformPathAssociatePoint.y-ballLayer.center.y), 2)))
+          let y = transformPathAssociatePoint.y
+          
+          return CGPoint(x: x, y: y)
+        }()
+        
+        let bottomLeftPoint:CGPoint = {
+          
+          let x = min(topLeftPoint.x - (CGFloat(DCRefreshControlConstant.ballLayerTransformKeyFrame.1-frameCount)*3), self.ballLayer.frame.origin.x-5)
+          
+          let lowerBounds = Int((abs(currentOffsetY)+controlPoint.y)/2)
+          let upperBounds = Int(abs(currentOffsetY))
+          guard let point = path.crossPointAt(x, range: (lowerBounds, upperBounds)) else { fatalError() }
+          
+          return CGPoint(x: point.x, y: point.y+2)
+          
+        }()
+        let bottomRightPoint = CGPoint(x: self.frame.size.width - bottomLeftPoint.x, y: bottomLeftPoint.y)
+        let topRightPoint = CGPoint(x: self.frame.size.width-topLeftPoint.x, y: topLeftPoint.y)
+        
+        let leftControlPoint = CGPoint(x: topLeftPoint.x+CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*3 , y: bottomLeftPoint.y-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1.8)
+        let rightControlPoint = CGPoint(x: topRightPoint.x-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*3, y: bottomLeftPoint.y-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1.8)
+        
+        //      print("\(topLeftPoint)\n ||\(leftControlPoint)\n\(bottomLeftPoint)\n\(topRightPoint)\n ||\(rightControlPoint)\n\(bottomRightPoint)\n")
+        
+        let path = UIBezierPath()
+        path.moveToPoint(topLeftPoint)
+        path.addQuadCurveToPoint(bottomLeftPoint, controlPoint: leftControlPoint)
+        path.addLineToPoint(bottomRightPoint)
+        path.addQuadCurveToPoint(topRightPoint, controlPoint: rightControlPoint)
+        path.closePath()
+        
+        let context = UIGraphicsGetCurrentContext()
+        CGContextAddPath(context, path.CGPath)
+        UIColor.whiteColor().set()
+        CGContextFillPath(context)
+        
+        /*
+         Debug:
+         UIColor.redColor().setStroke()
+         path.stroke()
+         */
       }
       
-//      let topLeftPoint = CGPoint(x: ballLayer.frame.origin.x, y: ballLayer.center.y)
+      /* Ball layer transform completed */
+      let ballLayerDidTransformed = (frameCount == DCRefreshControlConstant.ballLayerTransformLastKeyFrame)
       
-      let topLeftPoint:CGPoint = {
-        let x = self.frame.size.width/2-sqrt(CGFloat(powf(Float(ballLayer.frame.size.width/2), 2)-powf(Float(transformPathAssociatePoint.y-ballLayer.center.y), 2)))
-        let y = transformPathAssociatePoint.y
-
-        return CGPoint(x: x, y: y)
-      }()
-      
-      let bottomLeftPoint:CGPoint = {
+      if ballLayerDidTransformed == true {
         
-        let x = min(topLeftPoint.x - (CGFloat(DCRefreshControlConstant.ballLayerTransformKeyFrame.1-frameCount)*3), self.ballLayer.frame.origin.x-5)
-
-        let lowerBounds = Int((abs(currentOffsetY)+controlPoint.y)/2)
-        let upperBounds = Int(abs(currentOffsetY))
-        guard let point = path.crossPointAt(x, range: (lowerBounds, upperBounds)) else { fatalError() }
+        CATransaction.setDisableActions(true)
+        ballLayer.setCenter(CGPoint(x: controlPoint.x, y: abs(currentOffsetY)*(3/5)-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1))
         
-        return CGPoint(x: point.x, y: point.y+2)
+        let bottomLeft:CGPoint = {
+          let x = ballLayer.frame.origin.x-5
+          let lowerBounds = Int((abs(currentOffsetY)+controlPoint.y)/2)
+          let upperBounds = Int(abs(currentOffsetY))
+          guard let point = path.crossPointAt(x, range: (lowerBounds, upperBounds)) else { fatalError() }
+          return CGPoint(x: point.x, y: point.y+1)
+        }()
+        let bottomRight = CGPoint(x: self.frame.size.width-bottomLeft.x, y: bottomLeft.y)
+        let topPoint = CGPoint(x: self.frame.size.width/2, y: bottomLeft.y-6)
         
-      }()
-      let bottomRightPoint = CGPoint(x: self.frame.size.width - bottomLeftPoint.x, y: bottomLeftPoint.y)
-      let topRightPoint = CGPoint(x: self.frame.size.width-topLeftPoint.x, y: topLeftPoint.y)
+        let path = UIBezierPath()
+        path.moveToPoint(topPoint)
+        path.addLineToPoint(bottomLeft)
+        path.addLineToPoint(bottomRight)
+        path.closePath()
+        
+        let context = UIGraphicsGetCurrentContext()
+        CGContextAddPath(context, path.CGPath)
+        UIColor.whiteColor().set()
+        CGContextFillPath(context)
+        
+      }
       
-      let leftControlPoint = CGPoint(x: topLeftPoint.x+CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*3 , y: bottomLeftPoint.y-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1.8)
-      let rightControlPoint = CGPoint(x: topRightPoint.x-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*3, y: bottomLeftPoint.y-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1.8)
+      /* Circle layer begin transforming */
+      let circleLayerTransforming = (frameCount >= DCRefreshControlConstant.circlePathLayerTransformKeyFrame.0) && (frameCount <= DCRefreshControlConstant.circlePathLayerTransformKeyFrame.1)
       
-//      print("\(topLeftPoint)\n ||\(leftControlPoint)\n\(bottomLeftPoint)\n\(topRightPoint)\n ||\(rightControlPoint)\n\(bottomRightPoint)\n")
-      
-      let path = UIBezierPath()
-      path.moveToPoint(topLeftPoint)
-      path.addQuadCurveToPoint(bottomLeftPoint, controlPoint: leftControlPoint)
-      path.addLineToPoint(bottomRightPoint)
-      path.addQuadCurveToPoint(topRightPoint, controlPoint: rightControlPoint)
-      path.closePath()
-      
-      let context = UIGraphicsGetCurrentContext()
-      CGContextAddPath(context, path.CGPath)
-      UIColor.whiteColor().set()
-      CGContextFillPath(context)
-      
-      /*
-       Debug:
-       UIColor.redColor().setStroke()
-       path.stroke()
-       */
-    }
-    
-    /* Ball layer transform completed */
-    let ballLayerDidTransformed = (frameCount == DCRefreshControlConstant.ballLayerTransformLastKeyFrame)
-    
-    if ballLayerDidTransformed == true {
-      
-      CATransaction.setDisableActions(true)
-      ballLayer.setCenter(CGPoint(x: controlPoint.x, y: abs(currentOffsetY)*(3/5)-CGFloat(frameCount-DCRefreshControlConstant.ballLayerTransformKeyFrame.0)*1))
-      
-      let bottomLeft:CGPoint = {
-        let x = ballLayer.frame.origin.x-5
-        let lowerBounds = Int((abs(currentOffsetY)+controlPoint.y)/2)
-        let upperBounds = Int(abs(currentOffsetY))
-        guard let point = path.crossPointAt(x, range: (lowerBounds, upperBounds)) else { fatalError() }
-        return CGPoint(x: point.x, y: point.y+1)
-      }()
-      let bottomRight = CGPoint(x: self.frame.size.width-bottomLeft.x, y: bottomLeft.y)
-      let topControlPoint = CGPoint(x: self.frame.size.width/2, y: bottomLeft.y-12)
-      
-      let path = UIBezierPath()
-      path.moveToPoint(bottomLeft)
-      path.addQuadCurveToPoint(bottomRight, controlPoint: topControlPoint)
-      path.closePath()
-      
-      let context = UIGraphicsGetCurrentContext()
-      CGContextAddPath(context, path.CGPath)
-      UIColor.whiteColor().set()
-      CGContextFillPath(context)
+      if circleLayerTransforming == true {
+        
+        circlePathLayer.setCenter(ballLayer.center)
+        
+        let percentage = CGFloat(frameCount-DCRefreshControlConstant.circlePathLayerTransformKeyFrame.0+1)
+        let total = CGFloat(DCRefreshControlConstant.circlePathLayerTransformKeyFrame.1-DCRefreshControlConstant.circlePathLayerTransformKeyFrame.0)
+        
+        CATransaction.setDisableActions(true)
+        circlePathLayer.strokeEnd = percentage/total
+        
+      }
 
     }
     
-    /* Circle layer begin transforming */
-    let circleLayerTransforming = (frameCount >= DCRefreshControlConstant.circlePathLayerTransformKeyFrame.0) && (frameCount <= DCRefreshControlConstant.circlePathLayerTransformKeyFrame.1)
+    /* Configure the frame of the dismiss animation */
     
-    if circleLayerTransforming == true {
-      
-      circlePathLayer.setCenter(ballLayer.center)
-      
-      let percentage = CGFloat(frameCount-DCRefreshControlConstant.circlePathLayerTransformKeyFrame.0+1)
-      let total = CGFloat(DCRefreshControlConstant.circlePathLayerTransformKeyFrame.1-DCRefreshControlConstant.circlePathLayerTransformKeyFrame.0)
+    if refreshControlState == .Dismissing {
       
       CATransaction.setDisableActions(true)
-      circlePathLayer.strokeEnd = percentage/total
-
-//      print("\(percentage)/\(total)=\(percentage/total)")
+      ballLayer.setCenter(dismissAnimationAsscciatePoint)
+      
+      /* Ball layer start dismiss */
+     
+      let startTransform = (frameCount == DCRefreshControlConstant.ballLayerDismissKeyFrame.0)
+      
+      if startTransform == true {
+        
+        let topLeftPoint = CGPoint(x: ballLayer.frame.origin.x, y: ballLayer.center.y+4)
+        let topRightPoint = CGPoint(x: self.frame.size.width-topLeftPoint.x, y: topLeftPoint.y)
+        let topControlPoint = CGPoint(x: ballLayer.center.x, y: ballLayer.center.y+ballLayer.frame.size.height*1.2)
+        
+        let bottomLeftPoint = CGPoint(x: ballLayer.frame.origin.x, y: abs(currentOffsetY))
+        let bottomRightPoint = CGPoint(x: self.frame.size.width-bottomLeftPoint.x, y: abs(currentOffsetY))
+        let bottomTopPoint = CGPoint(x: ballLayer.center.x, y: abs(currentOffsetY)-4)
+        
+        let path = UIBezierPath()
+        path.moveToPoint(topLeftPoint)
+        path.addQuadCurveToPoint(topRightPoint, controlPoint: topControlPoint)
+        path.closePath()
+        
+        path.moveToPoint(bottomTopPoint)
+        path.addLineToPoint(bottomLeftPoint)
+        path.addLineToPoint(bottomRightPoint)
+        path.closePath()
+        
+        let context = UIGraphicsGetCurrentContext()
+        CGContextAddPath(context, path.CGPath)
+        UIColor.whiteColor().set()
+        CGContextFillPath(context)
+        
+      }
+      
+      /* Ball layer dismissing */
+      
+      let transforming = (frameCount > DCRefreshControlConstant.ballLayerDismissKeyFrame.0) && (frameCount <= DCRefreshControlConstant.ballLayerDismissKeyFrame.1)
+      
+      if transforming == true {
+        
+        let topLeftPoint:CGPoint = {
+          if frameCount >= 10 {
+            let x = ballLayer.center.x-ballLayer.frame.size.width/2/sqrt(2)
+            let y = ballLayer.center.y-ballLayer.frame.size.width/2/sqrt(2)
+            return CGPoint(x: x, y: y)
+          }
+          return CGPoint(x: ballLayer.frame.origin.x, y: ballLayer.center.y)
+        }()
+        
+        let bottomLeftPoint:CGPoint = {
+          
+          let x = topLeftPoint.x-CGFloat(frameCount-DCRefreshControlConstant.ballLayerDismissKeyFrame.0)*6-10
+          let y = abs(currentOffsetY)
+          
+          return CGPoint(x: x, y: y)
+          
+        }()
+        
+        let bottomRightPoint = CGPoint(x: self.frame.size.width-bottomLeftPoint.x, y: bottomLeftPoint.y)
+        let topRightPoint = CGPoint(x: self.frame.size.width-topLeftPoint.x, y: topLeftPoint.y)
+        
+        let leftControlPoint:CGPoint = {
+        
+          if frameCount == DCRefreshControlConstant.ballLayerDismissKeyFrame.0+1 {
+            return CGPoint(x: topLeftPoint.x+25, y: abs(currentOffsetY))
+          }
+          let x = (topLeftPoint.x+bottomLeftPoint.x)/2+15
+          let y = (topLeftPoint.y+bottomLeftPoint.y)/2+15
+          
+          return CGPoint(x: x, y: y)
+          
+        }()
+        
+        let rightControlPoint = CGPoint(x: self.frame.size.width-leftControlPoint.x, y: leftControlPoint.y)
+        
+        let path = UIBezierPath()
+        path.moveToPoint(topLeftPoint)
+        path.addQuadCurveToPoint(bottomLeftPoint, controlPoint: leftControlPoint)
+        path.addLineToPoint(bottomRightPoint)
+        path.addQuadCurveToPoint(topRightPoint, controlPoint: rightControlPoint)
+        path.closePath()
+        
+        let context = UIGraphicsGetCurrentContext()
+        CGContextAddPath(context, path.CGPath)
+        UIColor.whiteColor().set()
+        CGContextFillPath(context)
+        
+      }
       
     }
     
@@ -334,20 +502,36 @@ class DCRefreshControl: UIView {
     
     self.displayLink.invalidate()
     self.displayLink = nil
-    controlPointAssociateView.removeFromSuperview()
+
     
   }
   
   func displayLinkHandler() {
     
-    guard let controlPointLayer = controlPointAssociateView.layer.presentationLayer() else { return }
-    controlPoint = controlPointLayer.center
+    if refreshControlState == .Refreshing {
+      guard let controlPointLayer = controlPointAssociateView.layer.presentationLayer() else { return }
+      controlPoint = controlPointLayer.center
+      
+      frameCount += 1
+      
+      self.setNeedsDisplay()
+      
+      return
+    }
     
-//    print("\(frameCount):\(controlPoint)")
-    
-    frameCount += 1
-    
-    self.setNeedsDisplay()
+    if refreshControlState == .Dismissing {
+      
+      guard let dismissAnimationAsscciatePointLayer = dismissAnimationAssociateView.layer.presentationLayer() else { return }
+      dismissAnimationAsscciatePoint = dismissAnimationAsscciatePointLayer.center
+
+      frameCount += 1
+      
+      print(frameCount)
+      
+      self.setNeedsDisplay()
+      
+      return
+    }
     
   }
   
@@ -363,7 +547,7 @@ class DCRefreshControl: UIView {
     alphaAnimation.toValue = 0
     
     let animationGroup = CAAnimationGroup()
-    animationGroup.duration = 1
+    animationGroup.duration = 0.7
     animationGroup.animations = [scaleAnimation, alphaAnimation]
     animationGroup.repeatCount = Float.infinity
     animationGroup.fillMode = kCAFillModeForwards
@@ -380,21 +564,44 @@ class DCRefreshControl: UIView {
     circlePathLayer.removeAllAnimations()
     circlePathLayer.removeFromSuperlayer()
     
+    performDismissAnimation()
+    
   }
   
-  // MARK: - Layer dismiss
+  // MARK: - Layer dismiss Animation
   
   func performDismissAnimation() {
     
-    UIView.animateWithDuration(0.7, delay: 0, usingSpringWithDamping: 1, initialSpringVelocity: 0, options: .CurveEaseIn,
+    refreshControlState = .Dismissing
+    
+    dismissAnimationWillAppear()
+    
+    let scaleAnimation = CABasicAnimation(keyPath: "transform.scale")
+    scaleAnimation.fromValue = 1.0
+    scaleAnimation.toValue = 1.5
+    
+    let alphaAnimation = CABasicAnimation(keyPath: "opacity")
+    alphaAnimation.fromValue = 1.0
+    alphaAnimation.toValue = 0
+    
+    let animationGroup = CAAnimationGroup()
+    animationGroup.duration = 0.7
+    animationGroup.animations = [scaleAnimation, alphaAnimation]
+    animationGroup.repeatCount = Float.infinity
+    animationGroup.fillMode = kCAFillModeForwards
+    
+    circlePathLayer.addAnimation(animationGroup, forKey: nil)
+    
+    UIView.animateWithDuration(0.7, delay: 0, usingSpringWithDamping: 1, initialSpringVelocity: 0, options: .CurveEaseOut,
     animations: {
       
-      
+      self.dismissAnimationAssociateView.center = CGPoint(x:self.frame.size.width/2, y:abs(self.currentOffsetY)+self.ballLayer.frame.size.height/2)
       
     },
     completion: { finished in
-      
+      self.dismissAnimationDidEnd()
     })
+    
     
   }
   
@@ -406,10 +613,35 @@ class DCRefreshControl: UIView {
       
       frameCount = 0
     }
-
+    
+    dismissAnimationAssociateView = {
+      
+      let view = UIView(frame: CGRect(x: 0, y: 0, width: 2, height: 2))
+      view.center = ballLayer.center
+      view.backgroundColor = UIColor.clearColor()
+      return view
+      
+    }()
+    self.addSubview(dismissAnimationAssociateView)
+    
   }
   
-  // MARK: -The User's completion handler
+  func dismissAnimationDidEnd() {
+    
+    /* Everything back to normal */
+    
+    isAnimating = false
+    refreshControlState = .Idle
+    currentOffsetY = 0
+    
+    ballLayer.removeFromSuperlayer()
+    circlePathLayer.removeFromSuperlayer()
+    controlPointAssociateView.removeFromSuperview()
+    dismissAnimationAssociateView.removeFromSuperview()
+    
+  }
+  
+  // MARK: - The User's completion handler
   func performRefreshHandler(handler:DCRefreshControlHander) {
     
     if queue == nil {
@@ -566,6 +798,12 @@ class DCRefreshControl: UIView {
 
 extension UIBezierPath {
   
+  /**
+   The cross point at x axis
+   - parameter x The x axis
+   - parameter range The range of the y axis
+   @return The specified cross point
+   */
   func crossPointAt(x: CGFloat, range:(Int, Int)) -> CGPoint? {
     
     for y in range.0...range.1 {
@@ -578,6 +816,11 @@ extension UIBezierPath {
     
   }
   
+  /**
+   The cross point at x axis
+   - parameter x The x axis
+   @return The specified cross point
+   */
   func crossPointAt(x: CGFloat) -> CGPoint? {
     
     let upperBounds = Int(self.bounds.origin.y + self.bounds.size.height)
@@ -586,6 +829,7 @@ extension UIBezierPath {
     return self.crossPointAt(x, range: (lowerBounds, upperBounds))
   }
  
+  /// The top point in a path
   var topPoint:CGPoint {
     return CGPoint(x: self.bounds.size.width/2, y: self.bounds.origin.y)
   }
@@ -594,19 +838,24 @@ extension UIBezierPath {
 
 extension CALayer {
   
+  /// The middle point in a layer
   var middle:CGPoint {
     return CGPoint(x: self.frame.size.width/2, y: self.frame.size.height/2)
   }
   
+  /// The layer's center
   var center:CGPoint {
     return CGPoint(x: self.frame.origin.x + self.frame.size.width/2, y: self.frame.origin.y + self.frame.size.height/2)
   }
   
+  /// Set the layer's center
   func setCenter(point: CGPoint) {
     self.frame.origin = CGPoint(x: point.x - self.frame.size.width/2, y: point.y - self.frame.size.height/2)
   }
   
 }
+
+// MARK: - Dynamic property in runtime
 
 extension UIScrollView {
   

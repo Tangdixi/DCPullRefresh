@@ -26,8 +26,7 @@ class ViewController: UIViewController {
       }
       
     }
-    
-//    tableView.addSubview(UIRefreshControl())
+
     
   }
 
