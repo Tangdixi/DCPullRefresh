@@ -8,7 +8,7 @@
 
 import UIKit
 
-let dataSource = [1, 2, 3, 4]
+var dataSource = [1]
 
 class ViewController: UIViewController {
 
@@ -21,9 +21,12 @@ class ViewController: UIViewController {
     tableView.dcRefreshControl = DCRefreshControl {
       // do something...
       
-      for _ in 0...(0xffff/2) {
+      for _ in 0...(0xffff/3) {
         print("Updating......")
       }
+      
+      dataSource = [1, 2, 3, 4, 5 ,6, 7]
+      self.tableView.reloadData()
       
     }
 
