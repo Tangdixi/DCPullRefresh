@@ -13,7 +13,6 @@
 		8106EF6E1D30D37D000FA336 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8106EF6D1D30D37D000FA336 /* Assets.xcassets */; };
 		8106EF711D30D37D000FA336 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8106EF6F1D30D37D000FA336 /* LaunchScreen.storyboard */; };
 		8106EF791D30DAC5000FA336 /* DCPullRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8106EF781D30DAC5000FA336 /* DCPullRefresh.swift */; };
-		817933BD1D32AEC9005DA7DC /* DropAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817933BC1D32AEC9005DA7DC /* DropAnimator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,7 +24,6 @@
 		8106EF701D30D37D000FA336 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8106EF721D30D37D000FA336 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8106EF781D30DAC5000FA336 /* DCPullRefresh.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DCPullRefresh.swift; sourceTree = "<group>"; };
-		817933BC1D32AEC9005DA7DC /* DropAnimator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DropAnimator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,7 +59,6 @@
 				8106EF661D30D37D000FA336 /* AppDelegate.swift */,
 				8106EF681D30D37D000FA336 /* ViewController.swift */,
 				8106EF781D30DAC5000FA336 /* DCPullRefresh.swift */,
-				817933BC1D32AEC9005DA7DC /* DropAnimator.swift */,
 				8106EF6A1D30D37D000FA336 /* Main.storyboard */,
 				8106EF6D1D30D37D000FA336 /* Assets.xcassets */,
 				8106EF6F1D30D37D000FA336 /* LaunchScreen.storyboard */,
@@ -142,7 +139,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				8106EF691D30D37D000FA336 /* ViewController.swift in Sources */,
-				817933BD1D32AEC9005DA7DC /* DropAnimator.swift in Sources */,
 				8106EF791D30DAC5000FA336 /* DCPullRefresh.swift in Sources */,
 				8106EF671D30D37D000FA336 /* AppDelegate.swift in Sources */,
 			);
