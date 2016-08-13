@@ -650,7 +650,9 @@ class DCRefreshControl: UIView {
     circlePathLayer.removeFromSuperlayer()
     controlPointAssociateView.removeFromSuperview()
     dismissAnimationAssociateView.removeFromSuperview()
-    
+	
+	mirrorSuperView.userInteractionEnabled = true;
+	
   }
   
   // MARK: - The User's completion handler
@@ -730,7 +732,9 @@ class DCRefreshControl: UIView {
       
       let maxOffsetY = DCRefreshControlConstant.beginRefreshingThreshold + originContentInset.top
       mirrorSuperView.contentInset = UIEdgeInsets(top: maxOffsetY, left: 0, bottom: 0, right: 0)
-      
+		
+	  mirrorSuperView.userInteractionEnabled = false;
+		
       performBallLayerAnimation()
     }
     
