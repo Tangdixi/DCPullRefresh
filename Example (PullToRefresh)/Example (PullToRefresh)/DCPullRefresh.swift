@@ -726,14 +726,16 @@ class DCRefreshControl: UIView {
     
     guard let newState = change["new"]?.integerValue else { return }
     
-    let condition = (self.refreshControlState == .Refreshing) && (newState == UIGestureRecognizerState.Ended.rawValue) && (isAnimating == false)
+    let condition = (abs(currentOffsetY) >= DCRefreshControlConstant.beginRefreshingThreshold) && (newState == UIGestureRecognizerState.Ended.rawValue) && (isAnimating == false)
     
     if condition == true {
-      
+			
+			refreshControlState = DCRefreshControlState.Refreshing
+			
       let maxOffsetY = DCRefreshControlConstant.beginRefreshingThreshold + originContentInset.top
       mirrorSuperView.contentInset = UIEdgeInsets(top: maxOffsetY, left: 0, bottom: 0, right: 0)
 		
-	  mirrorSuperView.userInteractionEnabled = false;
+	    mirrorSuperView.userInteractionEnabled = false;
 		
       performBallLayerAnimation()
     }
@@ -791,8 +793,8 @@ class DCRefreshControl: UIView {
       self.setNeedsDisplay()
       
     case let y where y >= DCRefreshControlConstant.beginRefreshingThreshold:
-      refreshControlState = DCRefreshControlState.Refreshing
-      
+//      refreshControlState = DCRefreshControlState.Refreshing
+			
       self.frame = {
         let height = abs(currentOffsetY) + abs(currentOffsetY) - DCRefreshControlConstant.drawPathThreshold
         let y = currentOffsetY

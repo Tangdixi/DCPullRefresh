@@ -8,12 +8,11 @@
 
 import UIKit
 
-var dataSource = [1]
-
 class ViewController: UIViewController {
-
+	
   @IBOutlet weak var tableView: UITableView!
-  
+  var dataSource = [1]
+	
   override func viewDidLoad() {
     super.viewDidLoad()
     // Do any additional setup after loading the view, typically from a nib.
@@ -21,11 +20,9 @@ class ViewController: UIViewController {
     tableView.dcRefreshControl = DCRefreshControl {
       // do something...
       
-      for _ in 0...(0xffff/3) {
-        print("Updating......")
-      }
+	  sleep(3)
       
-      dataSource = [1, 2, 3, 4, 5 ,6, 7]
+      self.dataSource = [1, 2, 3, 4, 5 ,6, 7]
       self.tableView.reloadData()
       
     }
