@@ -7,15 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ADA903BB1D70357D0029ECC0 /* DCPullRefresh.h in Headers */ = {isa = PBXBuildFile; fileRef = ADA903B81D70357D0029ECC0 /* DCPullRefresh.h */; };
-		ADA903BC1D70357D0029ECC0 /* DCPullRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA903B91D70357D0029ECC0 /* DCPullRefresh.swift */; };
+		AD498CC71D70379C000A16D6 /* DCPullRefresh.h in Headers */ = {isa = PBXBuildFile; fileRef = AD498CC41D70379C000A16D6 /* DCPullRefresh.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		AD498CC81D70379C000A16D6 /* DCPullRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD498CC51D70379C000A16D6 /* DCPullRefresh.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AD498CC41D70379C000A16D6 /* DCPullRefresh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DCPullRefresh.h; path = Source/DCPullRefresh.h; sourceTree = SOURCE_ROOT; };
+		AD498CC51D70379C000A16D6 /* DCPullRefresh.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DCPullRefresh.swift; path = Source/DCPullRefresh.swift; sourceTree = SOURCE_ROOT; };
+		AD498CC61D70379C000A16D6 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Source/Info.plist; sourceTree = SOURCE_ROOT; };
 		ADA903AD1D7035670029ECC0 /* DCPullRefresh.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = DCPullRefresh.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		ADA903B21D7035670029ECC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		ADA903B81D70357D0029ECC0 /* DCPullRefresh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DCPullRefresh.h; sourceTree = "<group>"; };
-		ADA903B91D70357D0029ECC0 /* DCPullRefresh.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DCPullRefresh.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,9 +48,9 @@
 		ADA903AF1D7035670029ECC0 /* DCPullRefresh */ = {
 			isa = PBXGroup;
 			children = (
-				ADA903B81D70357D0029ECC0 /* DCPullRefresh.h */,
-				ADA903B91D70357D0029ECC0 /* DCPullRefresh.swift */,
-				ADA903B21D7035670029ECC0 /* Info.plist */,
+				AD498CC41D70379C000A16D6 /* DCPullRefresh.h */,
+				AD498CC51D70379C000A16D6 /* DCPullRefresh.swift */,
+				AD498CC61D70379C000A16D6 /* Info.plist */,
 			);
 			path = DCPullRefresh;
 			sourceTree = "<group>";
@@ -62,7 +62,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ADA903BB1D70357D0029ECC0 /* DCPullRefresh.h in Headers */,
+				AD498CC71D70379C000A16D6 /* DCPullRefresh.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,7 +133,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ADA903BC1D70357D0029ECC0 /* DCPullRefresh.swift in Sources */,
+				AD498CC81D70379C000A16D6 /* DCPullRefresh.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,7 +239,7 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				INFOPLIST_FILE = DCPullRefresh/Info.plist;
+				INFOPLIST_FILE = "$(SRCROOT)/Source/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tTangdixi.DCPullRefresh;
@@ -257,7 +257,7 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				INFOPLIST_FILE = DCPullRefresh/Info.plist;
+				INFOPLIST_FILE = "$(SRCROOT)/Source/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tTangdixi.DCPullRefresh;
