@@ -4,13 +4,13 @@
 
 I saw this amazing design from [Dribble](https://dribbble.com/shots/1797373-Pull-Down-To-Refresh). 
 
-##Install with CocoaPods
+## Install with CocoaPods
 
 ```bash
 pod 'DCPullRefresh', '~> 1.0'
 ``` 
 
-##How to use
+## How to use
 
 It's simple, you just need:
 
@@ -25,17 +25,17 @@ tableView.dcRefreshControl = DCRefreshControl {
     }
 ```
 
-###Todo
+### Todo
 
 *  More property 
 *  Add UICollectionView support
 *  Make animation more smooth
 
-##Issues, Bugs, Suggestions
+## Issues, Bugs, Suggestions
 
 Open an [issue](https://github.com/Tangdixi/DCPullRefresh/issues) 
 
-##License
+## License
 
 **DCPullRefresh** is available under the MIT license. See the LICENSE file for more info.
 
